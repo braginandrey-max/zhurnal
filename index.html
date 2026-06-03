@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F4E5F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Силовой журнал</title>
+<style>
+  :root{ --bg:#0f1416; --card:#1a2226; --card2:#222d32; --line:#2c393f;
+         --accent:#2f7d9a; --accent2:#1F4E5F; --txt:#e7eef0; --mut:#8aa0a8;
+         --good:#2e7d32; --warn:#a9871f; --bad:#9a3b3b; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,Roboto,"Segoe UI",Arial,sans-serif;
+       padding-bottom:72px;font-size:16px}
+  header{position:sticky;top:0;background:var(--accent2);padding:14px 16px;
+         display:flex;align-items:center;gap:10px;z-index:5}
+  header .logo{width:30px;height:30px;border-radius:7px;background:#fff;color:var(--accent2);
+       font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  header h1{font-size:18px;margin:0;font-weight:700}
+  .wrap{padding:14px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:14px;margin-bottom:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .mut{color:var(--mut);font-size:14px}
+  .chip{display:inline-block;background:var(--card2);border:1px solid var(--line);
+        border-radius:8px;padding:5px 9px;margin:3px 4px 3px 0;font-size:14px;white-space:nowrap}
+  .chip.w{opacity:.62;font-style:italic}
+  .exname{font-weight:600;margin:10px 0 2px}
+  button{font-family:inherit;font-size:15px;border:none;border-radius:10px;
+         padding:11px 14px;background:var(--accent);color:#fff;font-weight:600}
+  button.sec{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+  button.danger{background:var(--bad)}
+  button.ghost{background:transparent;color:var(--mut);border:1px solid var(--line)}
+  button:active{filter:brightness(1.15)}
+  input,select{font-family:inherit;font-size:16px;background:var(--card2);color:var(--txt);
+        border:1px solid var(--line);border-radius:9px;padding:10px}
+  input{width:100%}
+  label{font-size:13px;color:var(--mut);display:block;margin:8px 0 3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#11181b;border-top:1px solid var(--line);
+      display:flex;justify-content:space-around;padding:6px 0 10px;z-index:6}
+  nav button{background:none;color:var(--mut);font-size:11px;font-weight:500;display:flex;
+      flex-direction:column;align-items:center;gap:3px;padding:6px 8px;border-radius:8px;min-width:60px}
+  nav button .ic{font-size:20px}
+  nav button.on{color:var(--txt)}
+  .badge{font-size:11px;border-radius:6px;padding:2px 6px;font-weight:700}
+  .b-good{background:var(--good)} .b-warn{background:var(--warn)} .b-bad{background:var(--bad)}
+  .pill{font-size:12px;color:var(--mut);background:var(--card2);border:1px solid var(--line);
+        border-radius:20px;padding:4px 10px}
+  .setline{display:grid;grid-template-columns:1fr 1fr auto auto;gap:6px;align-items:center;margin:5px 0}
+  .setline .wm{font-size:12px;color:var(--mut)}
+  h2{font-size:16px;margin:6px 0 12px}
+  .hidden{display:none}
+  .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#000a;
+        border:1px solid var(--line);padding:10px 16px;border-radius:10px;font-size:14px;z-index:9}
+  svg text{fill:var(--mut);font-size:11px}
+  .ttl{font-weight:700;font-size:15px}
+  a.link{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<header><div class="logo">ST</div><h1>Силовой журнал</h1>
+  <span class="mut" style="margin-left:auto" id="hdrCount"></span></header>
+
+<div class="wrap">
+  <!-- ТРЕНИРОВКА -->
+  <section id="tab-add">
+    <div class="card">
+      <div class="grid2">
+        <div><label>Дата</label><input type="date" id="wDate"></div>
+        <div><label>Тип дня</label>
+          <select id="wType">
+            <option>Грудь+спина</option><option>Плечи+руки</option><option>Ноги</option>
+            <option>Другое</option>
+          </select></div>
+      </div>
+      <div style="margin-top:10px"><button class="sec" id="loadTmpl">Подставить упражнения дня ▾</button></div>
+    </div>
+    <div id="exEditor"></div>
+    <div class="card">
+      <button class="sec" id="addExBtn">+ Упражнение</button>
+      <button id="saveWorkout" style="float:right">Сохранить тренировку</button>
+      <div style="clear:both"></div>
+    </div>
+  </section>
+
+  <!-- ЖУРНАЛ -->
+  <section id="tab-log" class="hidden"></section>
+
+  <!-- РЕКОРДЫ -->
+  <section id="tab-rec" class="hidden"></section>
+
+  <!-- ГРАФИКИ -->
+  <section id="tab-chart" class="hidden">
+    <div class="card">
+      <label>Упражнение</label>
+      <select id="chartEx"></select>
+      <div id="chartBox" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="ttl">Объём за тренировку (тонны)</div>
+      <div id="volBox" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- НАСТРОЙКИ -->
+  <section id="tab-set" class="hidden">
+    <div class="card">
+      <div class="row"><div class="ttl">Синхронизация Google Drive</div><span id="syncDot" class="pill">офлайн</span></div>
+      <p class="mut" id="syncMsg">Журнал хранится в скрытой папке приложения на вашем Google Drive и синхронизируется между устройствами.</p>
+      <div id="cidWrap"><label>Google OAuth Client ID (вводится один раз)</label>
+        <input id="cid" placeholder="xxxxx.apps.googleusercontent.com"></div>
+      <div style="margin-top:10px">
+        <button id="gSignin" class="sec">Войти в Google</button>
+        <button id="gSync" class="sec hidden">🔄 Синхронизировать</button>
+        <button id="gOut" class="ghost hidden">Выйти</button>
+      </div>
+      <label style="margin-top:10px"><input type="checkbox" id="autoSync" style="width:auto"> авто-синхронизация при сохранении</label>
+    </div>
+    <div class="card">
+      <div class="ttl">Данные</div>
+      <p class="mut">Журнал хранится на этом устройстве. Регулярно выгружайте резервную копию.</p>
+      <button class="sec" id="expJson">⬇ Выгрузить (JSON, резерв)</button>
+      <button class="sec" id="expCsv">⬇ Выгрузить (CSV, таблица)</button>
+      <div style="height:8px"></div>
+      <button class="sec" id="impJsonBtn">⬆ Загрузить JSON</button>
+      <button class="sec" id="impCsvBtn">⬆ Импорт черновика Garmin (CSV)</button>
+      <input type="file" id="fileInput" accept=".json,.csv" class="hidden">
+    </div>
+    <div class="card">
+      <div class="ttl">Приложение</div>
+      <p class="mut" id="instHint">Чтобы установить на главный экран: меню браузера → «Добавить на главный экран».</p>
+      <button class="ghost" id="wipe">Очистить все данные</button>
+    </div>
+    <div class="card mut" style="font-size:13px">
+      Офлайн-версия журнала. Работает без интернета после первого открытия.
+      Веса с часов Garmin приблизительны — курируйте вручную.
+    </div>
+  </section>
+</div>
+
+<nav>
+  <button data-tab="add" class="on"><span class="ic">➕</span>Тренировка</button>
+  <button data-tab="log"><span class="ic">📖</span>Журнал</button>
+  <button data-tab="rec"><span class="ic">🏆</span>Рекорды</button>
+  <button data-tab="chart"><span class="ic">📈</span>Графики</button>
+  <button data-tab="set"><span class="ic">⚙️</span>Настройки</button>
+</nav>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const KEY='st_v1_days';
+const TEMPLATES={
+ "Грудь+спина":["Жим штанги лёжа","Тяга верхнего блока к груди широким хватом","Жим на наклонной скамье в Смите","Тяга штанги в наклоне","Сведение в кроссовере","Пуловер"],
+ "Плечи+руки":["Разведение рук за спиной","Тяга блока к подбородку","Разведение в бабочке","Молотковые сгибания","Жим в Смите на трицепс","Разгибание рук на блоке","Сгибание в блоке"],
+ "Ноги":["Румынская тяга","Сгибание ног в тренажёре","Жим ногами","Разгибание ног в тренажёре","Икры в станке"]
+};
+// ---- сид: 5 выверенных дней ----
+function S(w,r,warm){return {w:w,r:r,warm:!!warm};}
+const SEED=[
+ {date:"2026-05-20",type:"Ноги",ex:[
+   {name:"Румынская тяга",sets:[S(60,12,1),S(115,8),S(115,8),S(115,8)]},
+   {name:"Сгибание ног в тренажёре",sets:[S(12,12,1),S(20,8),S(20,12),S(20,8)]},
+   {name:"Жим ногами",sets:[S(340,12,1),S(420,8),S(420,8),S(430,20)],note:"430×20 — возможно сбой счётчика"},
+   {name:"Разгибание ног в тренажёре",sets:[S(30,12,1),S(51,8),S(51,8),S(51,13)]}]},
+ {date:"2026-05-22",type:"Плечи+руки",ex:[
+   {name:"Тяга блока к подбородку",sets:[S(42,12,1),S(62,8),S(62,8),S(62,12)]},
+   {name:"Разведение в бабочке",sets:[S(54,12,1),S(72,8),S(78,8),S(81,10)]},
+   {name:"Разведение рук за спиной",sets:[S(8,12,1),S(12,8),S(16,8),S(18,10)]},
+   {name:"Молотковые сгибания",sets:[S(16,12,1),S(22,12),S(22,12),S(24,12)]},
+   {name:"Жим в Смите на трицепс",sets:[S(20,12,1),S(45,8),S(45,8),S(45,8)]},
+   {name:"Сгибание в блоке",sets:[S(36,12,1),S(54,8),S(54,8),S(54,8)]},
+   {name:"Разгибание рук на блоке",sets:[S(42,12,1),S(66,8),S(66,8),S(66,15)]}]},
+ {date:"2026-05-27",type:"Ноги",ex:[
+   {name:"Румынская тяга",sets:[S(70,12,1),S(115,8),S(115,8),S(115,8)]},
+   {name:"Сгибание ног в тренажёре",sets:[S(12,12,1),S(20,8),S(20.5,8),S(21,8)]},
+   {name:"Жим ногами",sets:[S(340,12,1),S(430,8),S(440,8),S(450,15)]},
+   {name:"Разгибание ног в тренажёре",sets:[S(36,12,1),S(52,8),S(52,8),S(52,8)]},
+   {name:"Икры в станке",sets:[S(340,20),S(340,20),S(350,20),S(350,20)]}]},
+ {date:"2026-05-29",type:"Плечи+руки",ex:[
+   {name:"Разведение рук за спиной",sets:[S(8,12,1),S(12,8),S(14,12),S(16,9)]},
+   {name:"Тяга блока к подбородку",sets:[S(42,12,1),S(62,10),S(62,10),S(62,10)]},
+   {name:"Разведение в бабочке",sets:[S(54,12,1),S(74,8),S(74,8),S(74,8)]},
+   {name:"Жим в Смите на трицепс",sets:[S(20,12,1),S(46,8),S(46,8),S(46,8)]},
+   {name:"Молотковые сгибания",sets:[S(16,12,1),S(22,10),S(22,10),S(24,12)]},
+   {name:"Разгибание рук на блоке",sets:[S(42,12,1),S(64,8),S(66,8),S(66,12)]},
+   {name:"Сгибание в блоке",sets:[S(36,12,1),S(52,8),S(52,8),S(52,12)]}]},
+ {date:"2026-06-01",type:"Грудь+спина",ex:[
+   {name:"Жим штанги лёжа",sets:[S(60,12,1),S(82.5,7),S(82.5,7),S(82.5,7)]},
+   {name:"Тяга верхнего блока к груди широким хватом",sets:[S(49,12,1),S(67,8),S(67,8),S(67,8)]},
+   {name:"Жим на наклонной скамье в Смите",sets:[S(20,12,1),S(35,8),S(35,8),S(35,8)]},
+   {name:"Тяга штанги в наклоне",sets:[S(60,12,1),S(95.5,8),S(95.5,8),S(95,12)]},
+   {name:"Сведение в кроссовере",sets:[S(18,16,1),S(18,15),S(19,15),S(19,15)]},
+   {name:"Пуловер",sets:[S(42,15),S(42,15),S(42,15),S(42,15)]}]}
+];
+
+let DB=load();
+function load(){ try{const r=localStorage.getItem(KEY); if(r) return JSON.parse(r);}catch(e){}
+  localStorage.setItem(KEY,JSON.stringify(SEED)); return JSON.parse(JSON.stringify(SEED)); }
+function save(){ localStorage.setItem(KEY,JSON.stringify(DB)); }
+function vol(ex){return ex.sets.reduce((s,x)=>s+(+x.w||0)*(+x.r||0),0);}
+function dayVol(d){return d.ex.reduce((s,e)=>s+vol(e),0);}
+function fmt(n){return (Math.round(n*10)/10).toLocaleString('ru-RU');}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.remove('hidden');
+  clearTimeout(e._t);e._t=setTimeout(()=>e.classList.add('hidden'),1800);}
+function byDateDesc(a,b){return a.date<b.date?1:-1;}
+
+// ---------- НАВИГАЦИЯ ----------
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  ['add','log','rec','chart','set'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  const t=b.dataset.tab; document.getElementById('tab-'+t).classList.remove('hidden');
+  if(t==='log')renderLog(); if(t==='rec')renderRec(); if(t==='chart')renderChart();
+});
+
+// ---------- ТРЕНИРОВКА (ввод) ----------
+let draft=[];
+document.getElementById('wDate').value=new Date().toISOString().slice(0,10);
+document.getElementById('loadTmpl').onclick=()=>{
+  const t=document.getElementById('wType').value;
+  draft=(TEMPLATES[t]||[]).map(n=>({name:n,sets:[S('',12,1),S('',8),S('',8),S('',8)]}));
+  renderEditor();
+};
+document.getElementById('addExBtn').onclick=()=>{draft.push({name:'',sets:[S('',12,1),S('',8)]});renderEditor();};
+function renderEditor(){
+  const box=document.getElementById('exEditor');box.innerHTML='';
+  draft.forEach((ex,ei)=>{
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<input value="${ex.name}" placeholder="Упражнение" data-ei="${ei}" class="exn">`;
+    ex.sets.forEach((st,si)=>{
+      const line=document.createElement('div');line.className='setline';
+      line.innerHTML=`<input inputmode="decimal" placeholder="кг" value="${st.w}" data-ei="${ei}" data-si="${si}" data-f="w">
+        <input inputmode="numeric" placeholder="повт" value="${st.r}" data-ei="${ei}" data-si="${si}" data-f="r">
+        <span class="wm"><label style="margin:0"><input type="checkbox" ${st.warm?'checked':''} data-ei="${ei}" data-si="${si}" data-f="warm" style="width:auto"> разм.</label></span>
+        <button class="ghost" data-del="${ei}-${si}" style="padding:6px 10px">✕</button>`;
+      c.appendChild(line);
+    });
+    const add=document.createElement('button');add.className='sec';add.textContent='+ подход';
+    add.style.cssText='padding:7px 12px;margin-top:4px';add.onclick=()=>{ex.sets.push(S('',8));renderEditor();};
+    c.appendChild(add);
+    const del=document.createElement('button');del.className='ghost';del.textContent='Убрать упражнение';
+    del.style.cssText='padding:7px 12px;margin:6px 0 0 8px';del.onclick=()=>{draft.splice(ei,1);renderEditor();};
+    c.appendChild(del);
+    box.appendChild(c);
+  });
+  box.querySelectorAll('input').forEach(inp=>inp.oninput=e=>{
+    const t=e.target;
+    if(t.classList.contains('exn')){draft[t.dataset.ei].name=t.value;return;}
+    const st=draft[t.dataset.ei].sets[t.dataset.si];const f=t.dataset.f;
+    st[f]=f==='warm'?t.checked:t.value;
+  });
+  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const [ei,si]=b.dataset.del.split('-').map(Number);
+    draft[ei].sets.splice(si,1);renderEditor();
+  });
+}
+document.getElementById('saveWorkout').onclick=()=>{
+  const date=document.getElementById('wDate').value;
+  const type=document.getElementById('wType').value;
+  const ex=draft.filter(e=>e.name.trim()).map(e=>({name:e.name.trim(),
+      sets:e.sets.filter(s=>s.w!==''&&s.r!=='').map(s=>S(+s.w,+s.r,s.warm)),note:e.note}))
+      .filter(e=>e.sets.length);
+  if(!date||!ex.length){toast('Заполните дату и хотя бы один подход');return;}
+  DB=DB.filter(d=>d.date!==date);
+  DB.push({date,type,ex,u:Date.now()});save();draft=[];renderEditor();updateCount();
+  toast('Тренировка сохранена');
+  if(typeof autoSync==='function')autoSync();
+  document.querySelector('nav button[data-tab="log"]').click();
+};
+
+// ---------- ЖУРНАЛ ----------
+function renderLog(){
+  const box=document.getElementById('tab-log');box.innerHTML='';
+  const sorted=[...DB].sort(byDateDesc);
+  if(!sorted.length){box.innerHTML='<div class="card mut">Журнал пуст. Добавьте тренировку.</div>';return;}
+  sorted.forEach(d=>{
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<div class="row" style="cursor:pointer">
+      <div><span class="ttl">${ruDate(d.date)}</span> <span class="pill">${d.type}</span></div>
+      <div class="mut">${d.ex.length} упр · ${fmt(dayVol(d))} кг ▾</div></div>
+      <div class="body hidden"></div>`;
+    const head=c.querySelector('.row');const body=c.querySelector('.body');
+    head.onclick=()=>{ if(body.classList.contains('hidden')){body.classList.remove('hidden');fillBody(body,d);}
+      else body.classList.add('hidden'); };
+    box.appendChild(c);
+  });
+}
+function fillBody(body,d){
+  body.innerHTML='';
+  d.ex.forEach(e=>{
+    const div=document.createElement('div');
+    let chips=e.sets.map(s=>`<span class="chip ${s.warm?'w':''}">${fmt(s.w)}×${s.r}</span>`).join('');
+    div.innerHTML=`<div class="row"><span class="exname">${e.name}</span><span class="mut">${fmt(vol(e))} кг</span></div>
+      <div>${chips}</div>${e.note?`<div class="mut" style="font-style:italic">${e.note}</div>`:''}`;
+    body.appendChild(div);
+  });
+  const bar=document.createElement('div');bar.style.marginTop='10px';
+  const ed=document.createElement('button');ed.className='sec';ed.textContent='Редактировать';
+  ed.onclick=()=>{draft=JSON.parse(JSON.stringify(d.ex));
+    document.getElementById('wDate').value=d.date;document.getElementById('wType').value=d.type;
+    renderEditor();document.querySelector('nav button[data-tab="add"]').click();};
+  const del=document.createElement('button');del.className='danger';del.textContent='Удалить';
+  del.style.marginLeft='8px';
+  del.onclick=()=>{if(confirm('Удалить тренировку '+ruDate(d.date)+'?')){DB=DB.filter(x=>x.date!==d.date);save();renderLog();updateCount();}};
+  bar.appendChild(ed);bar.appendChild(del);body.appendChild(bar);
+}
+function ruDate(s){const[y,m,dd]=s.split('-');const mn=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  return +dd+' '+mn[+m-1]+' '+y;}
+
+// ---------- РЕКОРДЫ ----------
+function renderRec(){
+  const box=document.getElementById('tab-rec');box.innerHTML='';
+  const rec={};
+  DB.forEach(d=>d.ex.forEach(e=>e.sets.forEach(s=>{
+    if(s.warm)return;const w=+s.w,r=+s.r;if(!w)return;
+    const e1=w*(1+r/30); // Epley
+    if(!rec[e.name]||e1>rec[e.name].e1)rec[e.name]={w,r,e1,date:d.date};
+  })));
+  const names=Object.keys(rec).sort((a,b)=>rec[b].e1-rec[a].e1);
+  if(!names.length){box.innerHTML='<div class="card mut">Нет данных.</div>';return;}
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML='<div class="ttl" style="margin-bottom:10px">Рекорды (оценка 1ПМ по Эпли)</div>';
+  names.forEach(n=>{const r=rec[n];
+    c.innerHTML+=`<div class="row" style="padding:7px 0;border-top:1px solid var(--line)">
+      <span>${n}</span><span class="mut">${fmt(r.w)}×${r.r} · ~${fmt(r.e1)} кг</span></div>`;});
+  box.appendChild(c);
+}
+
+// ---------- ГРАФИКИ ----------
+function renderChart(){
+  const sel=document.getElementById('chartEx');
+  const names=[...new Set(DB.flatMap(d=>d.ex.map(e=>e.name)))].sort();
+  sel.innerHTML=names.map(n=>`<option>${n}</option>`).join('');
+  sel.onchange=drawExChart;drawExChart();drawVol();
+}
+function drawExChart(){
+  const name=document.getElementById('chartEx').value;
+  const pts=[];
+  [...DB].sort((a,b)=>a.date<b.date?-1:1).forEach(d=>{
+    const e=d.ex.find(x=>x.name===name);if(!e)return;
+    const work=e.sets.filter(s=>!s.warm&&+s.w);if(!work.length)return;
+    pts.push({x:d.date,y:Math.max(...work.map(s=>+s.w))});
+  });
+  document.getElementById('chartBox').innerHTML=lineSVG(pts,' кг');
+}
+function drawVol(){
+  const pts=[...DB].sort((a,b)=>a.date<b.date?-1:1).map(d=>({x:d.date,y:dayVol(d)/1000}));
+  document.getElementById('volBox').innerHTML=lineSVG(pts,' т');
+}
+function lineSVG(pts,suf){
+  if(pts.length<1)return '<div class="mut">Нет данных.</div>';
+  const W=560,H=180,pad=34;
+  const ys=pts.map(p=>p.y),ymin=Math.min(...ys),ymax=Math.max(...ys);
+  const span=(ymax-ymin)||1;
+  const X=i=>pad+(pts.length<2?0:i*(W-2*pad)/(pts.length-1));
+  const Y=v=>H-pad-(v-ymin)/span*(H-2*pad);
+  let path=pts.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
+  let dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3" fill="#2f7d9a"/>`).join('');
+  let lbl=`<text x="${pad}" y="14">${fmt(ymax)}${suf}</text><text x="${pad}" y="${H-pad+16}">${fmt(ymin)}${suf}</text>`;
+  let xl=`<text x="${X(0)}" y="${H-10}">${pts[0].x.slice(5)}</text>`+
+         (pts.length>1?`<text x="${W-pad-30}" y="${H-10}">${pts[pts.length-1].x.slice(5)}</text>`:'');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${path}" fill="none" stroke="#2f7d9a" stroke-width="2"/>${dots}${lbl}${xl}</svg>`;
+}
+
+// ---------- НАСТРОЙКИ / ЭКСПОРТ-ИМПОРТ ----------
+function dl(name,text,type){const b=new Blob([text],{type});const u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+document.getElementById('expJson').onclick=()=>dl('силовой_журнал.json',JSON.stringify(DB,null,1),'application/json');
+document.getElementById('expCsv').onclick=()=>{
+  let rows=[['Дата','Тип','Упражнение','№','Вес','Повторы','Разминка']];
+  [...DB].sort(byDateDesc).forEach(d=>d.ex.forEach(e=>e.sets.forEach((s,i)=>
+    rows.push([d.date,d.type,e.name,i+1,s.w,s.r,s.warm?'да':'']))));
+  dl('силовой_журнал.csv','﻿'+rows.map(r=>r.join(';')).join('\n'),'text/csv');
+};
+const fi=document.getElementById('fileInput');let impMode='json';
+document.getElementById('impJsonBtn').onclick=()=>{impMode='json';fi.click();};
+document.getElementById('impCsvBtn').onclick=()=>{impMode='csv';fi.click();};
+fi.onchange=()=>{const f=fi.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{ impMode==='json'?impJSON(rd.result):impCSV(rd.result);}catch(e){toast('Ошибка файла');}fi.value='';};
+  rd.readAsText(f);};
+function impJSON(txt){const arr=JSON.parse(txt);if(!Array.isArray(arr))throw 0;
+  const dates=new Set(DB.map(d=>d.date));let add=0;
+  arr.forEach(d=>{if(d.date&&!dates.has(d.date)){DB.push(d);add++;}});
+  save();updateCount();toast('Добавлено дней: '+add);renderLog();}
+function impCSV(txt){ // формат garmin_strength.py: Дата;Тип;Упражнение;Вес;Повторы;Разминка
+  const lines=txt.replace(/﻿/,'').trim().split(/\r?\n/);lines.shift();
+  const days={};
+  lines.forEach(l=>{const p=l.split(/[;,]/);if(p.length<5)return;
+    const[date,type,name,w,r,warm]=p;
+    days[date]=days[date]||{date,type:type||'Другое',ex:[]};
+    let e=days[date].ex.find(x=>x.name===name);if(!e){e={name,sets:[]};days[date].ex.push(e);}
+    e.sets.push(S(+w,+r,/да|1|true|warm/i.test(warm||'')));});
+  const have=new Set(DB.map(d=>d.date));let add=0;
+  Object.values(days).forEach(d=>{if(!have.has(d.date)){DB.push(d);add++;}});
+  save();updateCount();toast('Импортировано дней: '+add);renderLog();}
+document.getElementById('wipe').onclick=()=>{if(confirm('Удалить ВСЕ данные журнала без возврата?')){
+  localStorage.removeItem(KEY);DB=[];save();updateCount();toast('Очищено');renderLog();}};
+
+function updateCount(){document.getElementById('hdrCount').textContent=DB.length+' трен.';}
+updateCount();renderEditor();
+
+// ---------- GOOGLE DRIVE SYNC ----------
+const SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const FILENAME='силовой_журнал.json';
+let gToken=null, gTokenClient=null, gFileId=null;
+const $=id=>document.getElementById(id);
+$('cid').value=localStorage.getItem('st_cid')||'';
+$('autoSync').checked=localStorage.getItem('st_autosync')==='1';
+$('autoSync').onchange=e=>localStorage.setItem('st_autosync',e.target.checked?'1':'0');
+$('cid').onchange=e=>localStorage.setItem('st_cid',e.target.value.trim());
+function syncStatus(t,cls){const d=$('syncDot');d.textContent=t;d.className='pill';if(cls)d.style.color=cls;}
+function loadGIS(){return new Promise((res,rej)=>{
+  if(window.google&&google.accounts){res();return;}
+  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+  s.onload=res;s.onerror=()=>rej(new Error('нет сети'));document.head.appendChild(s);});}
+async function gSignIn(){
+  const cid=($('cid').value||'').trim();
+  if(!cid){toast('Введите Client ID');return;}
+  localStorage.setItem('st_cid',cid);
+  try{await loadGIS();}catch(e){toast('Нет интернета для входа');return;}
+  gTokenClient=google.accounts.oauth2.initTokenClient({client_id:cid,scope:SCOPE,
+    callback:async resp=>{ if(resp.error){toast('Ошибка входа');return;}
+      gToken=resp.access_token; onSignedIn(); await syncNow(); }});
+  gTokenClient.requestAccessToken({prompt:gToken?'':'consent'});
+}
+function onSignedIn(){ $('gSignin').classList.add('hidden');$('cidWrap').classList.add('hidden');
+  $('gSync').classList.remove('hidden');$('gOut').classList.remove('hidden');
+  localStorage.setItem('st_signed','1'); syncStatus('подключено','#7fc7dd'); }
+function gSignOut(){ gToken=null;gFileId=null;localStorage.removeItem('st_signed');
+  $('gSignin').classList.remove('hidden');$('cidWrap').classList.remove('hidden');
+  $('gSync').classList.add('hidden');$('gOut').classList.add('hidden');syncStatus('офлайн'); }
+$('gSignin').onclick=gSignIn; $('gOut').onclick=gSignOut; $('gSync').onclick=()=>syncNow(true);
+async function gFetch(url,opt){opt=opt||{};opt.headers=Object.assign({Authorization:'Bearer '+gToken},opt.headers||{});
+  const r=await fetch(url,opt); if(r.status===401){gToken=null;throw new Error('reauth');} return r;}
+async function findFile(){
+  const q=encodeURIComponent("name='"+FILENAME+"'");
+  const r=await gFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)&q='+q);
+  const j=await r.json(); return (j.files&&j.files[0])?j.files[0].id:null;}
+async function downloadFile(id){const r=await gFetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media');
+  try{return await r.json();}catch(e){return [];}}
+async function uploadFile(data){
+  const body=JSON.stringify(data);
+  if(gFileId){
+    await gFetch('https://www.googleapis.com/upload/drive/v3/files/'+gFileId+'?uploadType=media',
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body});
+  }else{
+    const meta={name:FILENAME,parents:['appDataFolder']};
+    const boundary='-------svj';
+    const multipart='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+
+      JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+body+'\r\n--'+boundary+'--';
+    const r=await gFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      {method:'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body:multipart});
+    const j=await r.json(); gFileId=j.id;
+  }
+}
+function mergeDays(local,remote){ // объединение по дате, побеждает свежая правка (u)
+  const map={}; [...remote,...local].forEach(d=>{ if(!d||!d.date)return;
+    const cur=map[d.date]; if(!cur||(d.u||0)>=(cur.u||0)) map[d.date]=d; });
+  return Object.values(map).sort(byDateDesc);}
+let syncing=false;
+async function syncNow(manual){
+  if(!gToken){ if(localStorage.getItem('st_signed')){return gSignIn();} return; }
+  if(syncing)return; syncing=true; syncStatus('синхрон…','#a9871f');
+  try{
+    gFileId=gFileId||await findFile();
+    const remote=gFileId?await downloadFile(gFileId):[];
+    const merged=mergeDays(DB,Array.isArray(remote)?remote:[]);
+    DB=merged; save(); updateCount();
+    await uploadFile(DB);
+    syncStatus('синхронизировано','#7fc7dd');
+    if(manual)toast('Синхронизировано: '+DB.length+' трен.');
+    const cur=document.querySelector('nav button.on').dataset.tab;
+    if(cur==='log')renderLog();
+  }catch(e){ if(e.message==='reauth'){return gSignIn();} syncStatus('ошибка сети','#9a3b3b');
+    if(manual)toast('Не удалось синхронизировать'); }
+  finally{syncing=false;}
+}
+function autoSync(){ if($('autoSync').checked && (gToken||localStorage.getItem('st_signed'))) syncNow(); }
+// автоподключение при старте, если уже входили
+window.addEventListener('load',()=>{ if(localStorage.getItem('st_signed')){onSignedIn();
+  if(navigator.onLine){loadGIS().then(()=>gSignIn()).catch(()=>syncStatus('офлайн'));} }});
+
+// ---------- PWA / service worker ----------
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;
+  const h=document.getElementById('instHint');
+  h.innerHTML='';const b=document.createElement('button');b.textContent='📲 Установить на главный экран';
+  b.onclick=async()=>{deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;};
+  h.appendChild(b);});
+</script>
+</body>
+</html>
