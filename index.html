@@ -60,6 +60,18 @@
   svg text{fill:var(--mut);font-size:11px}
   .ttl{font-weight:700;font-size:15px}
   a.link{color:var(--accent);text-decoration:none}
+  textarea{font-family:inherit;font-size:16px;background:var(--card2);color:var(--txt);
+        border:1px solid var(--line);border-radius:9px;padding:10px;width:100%;resize:vertical;min-height:60px}
+  .exrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+        padding:13px 2px;border-top:1px solid var(--line);cursor:pointer}
+  .exrow:first-child{border-top:none}
+  .exrow .nm{font-weight:600}
+  .exrow .sub{font-size:13px;color:var(--mut);margin-top:3px}
+  .exrow .chev{color:var(--mut);font-size:22px;flex:none}
+  .last{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0}
+  .last .lt{font-size:13px;color:var(--mut);margin-bottom:6px}
+  .last .ltnote{font-style:italic;color:var(--txt);margin-top:6px;font-size:14px}
+  .backbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -69,7 +81,7 @@
 <div class="wrap">
   <!-- ТРЕНИРОВКА -->
   <section id="tab-add">
-    <div class="card">
+    <div class="card" id="wHeadCard">
       <div class="grid2">
         <div><label>Дата</label><input type="date" id="wDate"></div>
         <div><label>Тип дня</label>
@@ -81,7 +93,7 @@
       <div style="margin-top:10px"><button class="sec" id="loadTmpl">Подставить упражнения дня ▾</button></div>
     </div>
     <div id="exEditor"></div>
-    <div class="card">
+    <div class="card" id="wFootCard">
       <button class="sec" id="addExBtn">+ Упражнение</button>
       <button id="saveWorkout" style="float:right">Сохранить тренировку</button>
       <div style="clear:both"></div>
@@ -219,55 +231,136 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
 });
 
 // ---------- ТРЕНИРОВКА (ввод) ----------
-let draft=[];
+let draft=[];        // упражнения текущего дня
+let openEx=null;     // индекс открытого упражнения (null = показываем список)
 document.getElementById('wDate').value=new Date().toISOString().slice(0,10);
 document.getElementById('loadTmpl').onclick=()=>{
   const t=document.getElementById('wType').value;
-  draft=(TEMPLATES[t]||[]).map(n=>({name:n,sets:[S('',12,1),S('',8),S('',8),S('',8)]}));
-  renderEditor();
+  draft=(TEMPLATES[t]||[]).map(n=>({name:n,sets:[S('',12,1),S('',8),S('',8),S('',8)],note:''}));
+  openEx=null;renderEditor();
 };
-document.getElementById('addExBtn').onclick=()=>{draft.push({name:'',sets:[S('',12,1),S('',8)]});renderEditor();};
+document.getElementById('addExBtn').onclick=()=>{
+  draft.push({name:'',sets:[S('',12,1),S('',8)],note:''});
+  openEx=draft.length-1;renderEditor();window.scrollTo(0,0);   // сразу открыть новое упражнение
+};
+
+// последняя ПРЕДЫДУЩАЯ тренировка с этим упражнением (строго до текущей даты)
+function lastSession(name,beforeDate){
+  if(!name)return null;
+  const cand=DB.filter(d=>d.date<beforeDate&&d.ex.some(e=>e.name===name)).sort(byDateDesc);
+  if(!cand.length)return null;
+  const e=cand[0].ex.find(x=>x.name===name);
+  return {date:cand[0].date,sets:e.sets,note:e.note};
+}
+// краткая сводка упражнения для списка
+function exSummary(ex){
+  const filled=ex.sets.filter(s=>s.w!==''&&s.w!=null);
+  if(!filled.length)return 'не заполнено';
+  return filled.length+' подх · '+fmt(vol(ex))+' кг';
+}
+
 function renderEditor(){
+  const head=document.getElementById('wHeadCard'),foot=document.getElementById('wFootCard');
+  if(openEx==null){head.classList.remove('hidden');foot.classList.remove('hidden');renderExList();}
+  else{head.classList.add('hidden');foot.classList.add('hidden');renderExDetail(openEx);}
+}
+
+function renderExList(){
   const box=document.getElementById('exEditor');box.innerHTML='';
+  if(!draft.length){
+    box.innerHTML='<div class="card mut">Подставьте упражнения дня кнопкой выше или добавьте вручную (+ Упражнение).</div>';
+    return;
+  }
+  const c=document.createElement('div');c.className='card';
   draft.forEach((ex,ei)=>{
-    const c=document.createElement('div');c.className='card';
-    c.innerHTML=`<input value="${ex.name}" placeholder="Упражнение" data-ei="${ei}" class="exn">`;
+    const row=document.createElement('div');row.className='exrow';
+    row.innerHTML=`<div style="min-width:0">
+        <div class="nm">${ex.name||'<span class="mut">Без названия</span>'}</div>
+        <div class="sub">${exSummary(ex)}${ex.note?' · 📝':''}</div>
+      </div><div class="chev">›</div>`;
+    row.onclick=()=>{openEx=ei;renderEditor();window.scrollTo(0,0);};
+    c.appendChild(row);
+  });
+  box.appendChild(c);
+}
+
+function renderExDetail(ei){
+  const ex=draft[ei];
+  const box=document.getElementById('exEditor');box.innerHTML='';
+  const c=document.createElement('div');c.className='card';
+  const ls=lastSession(ex.name,document.getElementById('wDate').value);
+  let lastHtml='';
+  if(ls){
+    const chips=ls.sets.map(s=>`<span class="chip ${s.warm?'w':''}">${fmt(s.w)}×${s.r}</span>`).join('');
+    lastHtml=`<div class="last">
+        <div class="lt">Прошлый раз · ${ruDate(ls.date)} · ${fmt(vol({sets:ls.sets}))} кг</div>
+        <div>${chips}</div>
+        ${ls.note?`<div class="ltnote">📝 ${ls.note}</div>`:''}
+        <button class="sec" id="exCopy" style="padding:6px 10px;margin-top:8px">Заполнить как прошлый раз</button>
+      </div>`;
+  }
+  c.innerHTML=`<div class="backbar">
+      <button class="sec" id="exBack" style="padding:8px 12px">← К списку</button>
+      <span class="pill" id="exVol">${fmt(vol(ex))} кг</span>
+    </div>
+    <input value="${ex.name||''}" placeholder="Упражнение" class="exn">
+    ${lastHtml}
+    <div id="exSets"></div>`;
+  box.appendChild(c);
+
+  const setsBox=c.querySelector('#exSets');
+  function renderSets(){
+    setsBox.innerHTML='';
     ex.sets.forEach((st,si)=>{
       const line=document.createElement('div');line.className='setline';
-      line.innerHTML=`<input inputmode="decimal" placeholder="кг" value="${st.w}" data-ei="${ei}" data-si="${si}" data-f="w">
-        <input inputmode="numeric" placeholder="повт" value="${st.r}" data-ei="${ei}" data-si="${si}" data-f="r">
-        <span class="wm"><label style="margin:0"><input type="checkbox" ${st.warm?'checked':''} data-ei="${ei}" data-si="${si}" data-f="warm" style="width:auto"> разм.</label></span>
-        <button class="ghost" data-del="${ei}-${si}" style="padding:6px 10px">✕</button>`;
-      c.appendChild(line);
+      line.innerHTML=`<input inputmode="decimal" placeholder="кг" value="${st.w}" data-si="${si}" data-f="w">
+        <input inputmode="numeric" placeholder="повт" value="${st.r}" data-si="${si}" data-f="r">
+        <span class="wm"><label style="margin:0"><input type="checkbox" ${st.warm?'checked':''} data-si="${si}" data-f="warm" style="width:auto"> разм.</label></span>
+        <button class="ghost" data-delset="${si}" style="padding:6px 10px">✕</button>`;
+      setsBox.appendChild(line);
     });
     const add=document.createElement('button');add.className='sec';add.textContent='+ подход';
-    add.style.cssText='padding:7px 12px;margin-top:4px';add.onclick=()=>{ex.sets.push(S('',8));renderEditor();};
-    c.appendChild(add);
-    const del=document.createElement('button');del.className='ghost';del.textContent='Убрать упражнение';
-    del.style.cssText='padding:7px 12px;margin:6px 0 0 8px';del.onclick=()=>{draft.splice(ei,1);renderEditor();};
-    c.appendChild(del);
-    box.appendChild(c);
-  });
-  box.querySelectorAll('input').forEach(inp=>inp.oninput=e=>{
-    const t=e.target;
-    if(t.classList.contains('exn')){draft[t.dataset.ei].name=t.value;return;}
-    const st=draft[t.dataset.ei].sets[t.dataset.si];const f=t.dataset.f;
-    st[f]=f==='warm'?t.checked:t.value;
-  });
-  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
-    const [ei,si]=b.dataset.del.split('-').map(Number);
-    draft[ei].sets.splice(si,1);renderEditor();
-  });
+    add.style.cssText='padding:7px 12px;margin-top:4px';
+    add.onclick=()=>{ex.sets.push(S('',8));renderSets();};
+    setsBox.appendChild(add);
+    setsBox.querySelectorAll('input').forEach(inp=>inp.oninput=e=>{
+      const t=e.target,st=ex.sets[t.dataset.si],f=t.dataset.f;
+      st[f]=f==='warm'?t.checked:t.value;
+      document.getElementById('exVol').textContent=fmt(vol(ex))+' кг';
+    });
+    setsBox.querySelectorAll('[data-delset]').forEach(b=>b.onclick=()=>{
+      ex.sets.splice(+b.dataset.delset,1);renderSets();
+      document.getElementById('exVol').textContent=fmt(vol(ex))+' кг';
+    });
+  }
+  renderSets();
+
+  const noteWrap=document.createElement('div');
+  noteWrap.innerHTML=`<label style="margin-top:12px">Комментарий — план на следующий раз</label>
+    <textarea id="exNote" placeholder="например: добавить 2,5 кг в рабочих подходах">${ex.note||''}</textarea>`;
+  c.appendChild(noteWrap);
+
+  const delEx=document.createElement('button');delEx.className='ghost';delEx.textContent='Убрать упражнение';
+  delEx.style.cssText='padding:7px 12px;margin-top:10px';
+  delEx.onclick=()=>{draft.splice(ei,1);openEx=null;renderEditor();window.scrollTo(0,0);};
+  c.appendChild(delEx);
+
+  c.querySelector('.exn').oninput=e=>{ex.name=e.target.value;};
+  c.querySelector('#exNote').oninput=e=>{ex.note=e.target.value;};
+  c.querySelector('#exBack').onclick=()=>{openEx=null;renderEditor();window.scrollTo(0,0);};
+  const cp=c.querySelector('#exCopy');
+  if(cp)cp.onclick=()=>{ex.sets=ls.sets.map(s=>S(s.w,s.r,s.warm));renderEditor();};
 }
 document.getElementById('saveWorkout').onclick=()=>{
   const date=document.getElementById('wDate').value;
   const type=document.getElementById('wType').value;
   const ex=draft.filter(e=>e.name.trim()).map(e=>({name:e.name.trim(),
-      sets:e.sets.filter(s=>s.w!==''&&s.r!=='').map(s=>S(+s.w,+s.r,s.warm)),note:e.note}))
-      .filter(e=>e.sets.length);
+      sets:e.sets.filter(s=>s.w!==''&&s.r!=='').map(s=>S(+s.w,+s.r,s.warm)),
+      note:(e.note||'').trim()||undefined}))
+      .filter(e=>e.sets.length||e.note);
   if(!date||!ex.length){toast('Заполните дату и хотя бы один подход');return;}
   DB=DB.filter(d=>d.date!==date);
-  DB.push({date,type,ex,u:Date.now()});save();draft=[];renderEditor();updateCount();
+  DB.push({date,type,ex,u:Date.now()});save();draft=[];openEx=null;renderEditor();updateCount();
   toast('Тренировка сохранена');
   if(typeof autoSync==='function')autoSync();
   document.querySelector('nav button[data-tab="log"]').click();
@@ -301,7 +394,7 @@ function fillBody(body,d){
   });
   const bar=document.createElement('div');bar.style.marginTop='10px';
   const ed=document.createElement('button');ed.className='sec';ed.textContent='Редактировать';
-  ed.onclick=()=>{draft=JSON.parse(JSON.stringify(d.ex));
+  ed.onclick=()=>{draft=JSON.parse(JSON.stringify(d.ex));openEx=null;
     document.getElementById('wDate').value=d.date;document.getElementById('wType').value=d.type;
     renderEditor();document.querySelector('nav button[data-tab="add"]').click();};
   const del=document.createElement('button');del.className='danger';del.textContent='Удалить';
