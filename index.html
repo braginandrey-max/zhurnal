@@ -551,19 +551,21 @@ async function gSignIn(silent){
   try{await loadGIS();}catch(e){ if(!silent)toast('Нет интернета для входа'); syncStatus('офлайн'); return;}
   gTokenClient=google.accounts.oauth2.initTokenClient({client_id:cid,scope:SCOPE,
     callback:async resp=>{ if(resp.error){ if(!silent)toast('Ошибка входа'); syncStatus('офлайн'); return;}
-      gToken=resp.access_token; onSignedIn(); await syncNow(); }});
+      gToken=resp.access_token;
+      try{ localStorage.setItem('st_tok',JSON.stringify({t:gToken,exp:Date.now()+((+resp.expires_in||3600)-90)*1000})); }catch(e){}
+      onSignedIn(); await syncNow(); }});
   // уже входили → тихо переиспользуем согласие (без повторного экрана); первый раз → спрашиваем согласие
   gTokenClient.requestAccessToken({prompt: localStorage.getItem('st_signed') ? '' : 'consent'});
 }
 function onSignedIn(){ $('gSignin').classList.add('hidden');$('cidWrap').classList.add('hidden');
   $('gSync').classList.remove('hidden');$('gOut').classList.remove('hidden');
   localStorage.setItem('st_signed','1'); syncStatus('подключено','#7fc7dd'); }
-function gSignOut(){ gToken=null;gFileId=null;localStorage.removeItem('st_signed');
+function gSignOut(){ gToken=null;gFileId=null;localStorage.removeItem('st_signed');localStorage.removeItem('st_tok');
   $('gSignin').classList.remove('hidden');$('cidWrap').classList.remove('hidden');
   $('gSync').classList.add('hidden');$('gOut').classList.add('hidden');syncStatus('офлайн'); }
 $('gSignin').onclick=()=>gSignIn(false); $('gOut').onclick=gSignOut; $('gSync').onclick=()=>syncNow(true);
 async function gFetch(url,opt){opt=opt||{};opt.headers=Object.assign({Authorization:'Bearer '+gToken},opt.headers||{});
-  const r=await fetch(url,opt); if(r.status===401){gToken=null;throw new Error('reauth');} return r;}
+  const r=await fetch(url,opt); if(r.status===401){gToken=null;localStorage.removeItem('st_tok');throw new Error('reauth');} return r;}
 async function findFile(){
   const q=encodeURIComponent("name='"+FILENAME+"'");
   const r=await gFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)&q='+q);
@@ -609,8 +611,12 @@ async function syncNow(manual){
 }
 function autoSync(){ if($('autoSync').checked && (gToken||localStorage.getItem('st_signed'))) syncNow(); }
 // автоподключение при старте, если уже входили
-window.addEventListener('load',()=>{ if(localStorage.getItem('st_signed')){onSignedIn();
-  if(navigator.onLine){ gSignIn(true); } }});
+window.addEventListener('load',()=>{ if(!localStorage.getItem('st_signed'))return; onSignedIn();
+  // живой кэш токена (~1 час) → тихо синхронизируемся без входа
+  try{ const c=JSON.parse(localStorage.getItem('st_tok')||'null');
+    if(c&&c.t&&c.exp&&Date.now()<c.exp){ gToken=c.t; if(navigator.onLine)syncNow(); return; } }catch(e){}
+  // токена нет/протух → пробуем тихо обновить (может потребовать одно касание)
+  if(navigator.onLine) gSignIn(true); });
 
 // ---------- PWA / service worker ----------
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
